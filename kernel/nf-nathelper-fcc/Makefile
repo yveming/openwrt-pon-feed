@@ -1,46 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0-only
 #
-# Copyright (C) 2026 ming
+# Thin OpenWrt package for the FCC netfilter NAT helper.
 #
-# OpenWrt package for the FCC netfilter NAT helper.
-#
-# This file IS the OpenWrt package Makefile and lives at the project root,
-# so the OpenWrt tree symlinks the whole project as one package:
-#
-#   ln -s <repo> <tree>/package/fcc-nathelper
-#   make package/fcc-nathelper/compile
-#
-# Out-of-tree kernel builds work standalone too — just run make; see targets
-# below (KERNEL_DIR defaults to the running kernel's build dir).
-#
-# Artifact: bin/targets/<board>/<subtarget>/packages/kmod-nf-nathelper-fcc-<kver>.apk
-#
-# FCC port configuration on the device: edit
-# /etc/modules.d/45-nf-nathelper-fcc and append the module parameter,
-# e.g. "nf_conntrack_fcc port=8030", then restart the boot script.
-
-KERNEL_DIR  ?= /lib/modules/$(shell uname -r)/build
-ARCH        ?=
-CROSS_COMPILE ?=
-
-ifeq ($(TOPDIR),)
-# ----------------------------------------------------------- standalone build
-.PHONY: all modules clean install
-
-all: modules
-
-modules:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURDIR)/src ARCH=$(ARCH) \
-		CROSS_COMPILE=$(CROSS_COMPILE) modules
-
-clean:
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURDIR)/src clean
-
-install: modules
-	$(MAKE) -C $(KERNEL_DIR) M=$(CURDIR)/src ARCH=$(ARCH) \
-		CROSS_COMPILE=$(CROSS_COMPILE) modules_install
-
-else
-# ------------------------------------------------------------- OpenWrt build
+# The source is fetched from yveming/nf-nathelper-fcc at build time; this
+# directory only carries the packaging metadata and the firewall helper
+# integration.
 
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
@@ -48,6 +12,12 @@ include $(INCLUDE_DIR)/kernel.mk
 PKG_NAME:=fcc-nathelper
 PKG_VERSION:=1.0.0
 PKG_RELEASE:=10
+
+PKG_SOURCE_PROTO:=git
+PKG_SOURCE_URL:=https://github.com/yveming/nf-nathelper-fcc.git
+PKG_SOURCE_VERSION:=ba6bcfd0acb9ba51cb3c635fc15665c2ea01a248
+PKG_SOURCE_DATE:=2026-10-12
+PKG_MIRROR_HASH:=77cf8c2c7832bdd3471b43b673ccd326267d548077517beed64320dd829f7969
 
 PKG_MAINTAINER:=ming
 PKG_LICENSE:=GPL-2.0
@@ -58,7 +28,8 @@ define KernelPackage/nf-nathelper-fcc
   SUBMENU:=Netfilter Extensions
   TITLE:=FCC (Fast Channel Change) NAT helper
   DEPENDS:=+kmod-nf-conntrack +kmod-nf-nat
-  FILES:=$(PKG_BUILD_DIR)/nf_conntrack_fcc.ko $(PKG_BUILD_DIR)/nf_nat_fcc.ko
+  FILES:=$(PKG_BUILD_DIR)/src/nf_conntrack_fcc.ko \
+	$(PKG_BUILD_DIR)/src/nf_nat_fcc.ko
   AUTOLOAD:=$(call AutoLoad,45,nf_conntrack_fcc nf_nat_fcc)
 endef
 
@@ -67,15 +38,8 @@ define KernelPackage/nf-nathelper-fcc/description
  (Huawei and Telecom variants).
 endef
 
-# Explicit list: the source dir also holds build artifacts.
-define Build/Prepare
-	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) ./src/Kbuild ./src/nf_fcc.h \
-	      ./src/nf_conntrack_fcc.c ./src/nf_nat_fcc.c $(PKG_BUILD_DIR)/
-endef
-
 define Build/Compile
-	$(KERNEL_MAKE) M="$(PKG_BUILD_DIR)" modules
+	$(KERNEL_MAKE) M="$(PKG_BUILD_DIR)/src" modules
 endef
 
 # Register the fcc helper in fw4's helper database and accept
@@ -132,5 +96,3 @@ exit 0
 endef
 
 $(eval $(call KernelPackage,nf-nathelper-fcc))
-
-endif

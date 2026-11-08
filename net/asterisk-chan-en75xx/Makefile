@@ -9,7 +9,9 @@ PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/Sirherobrine23/airoha_voip.git
 PKG_SOURCE_DATE:=2026-09-24
 PKG_SOURCE_VERSION:=4222576d980856f3c9ffc323d2fd78a28f94f085
-PKG_MIRROR_HASH:=00831f3a3261ba5c997188472d357d7d506f7e2689b573ac771159253c5cdb81
+PKG_SOURCE_SUBDIR:=airoha_voip-2026.09.24~4222576d
+PKG_SOURCE:=airoha_voip-2026.09.24~4222576d.tar.zst
+PKG_MIRROR_HASH:=90a0cd35139c988fcb2c3974b10a9c544eee24f35decab95383a9cccf33bd6ab
 
 PKG_LICENSE:=GPL-2.0-only
 PKG_BUILD_DEPENDS:=asterisk
@@ -37,6 +39,14 @@ define Package/asterisk-chan-en75xx/conffiles
 /etc/asterisk/extensions-en75xx.conf
 /etc/asterisk/indications-en75xx.conf
 /etc/asterisk/musiconhold-en75xx.conf
+endef
+
+define Build/Prepare
+	rm -rf $(PKG_BUILD_DIR)
+	mkdir -p $(PKG_BUILD_DIR)
+	$(STAGING_DIR_HOST)/bin/zstd -dc $(DL_DIR)/$(PKG_SOURCE) | \
+		$(TAR) -x -C $(PKG_BUILD_DIR) --strip-components=1
+	$(Build/Patch)
 endef
 
 define Build/Compile

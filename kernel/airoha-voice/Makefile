@@ -10,7 +10,9 @@ PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/Sirherobrine23/airoha_voip.git
 PKG_SOURCE_DATE:=2026-09-24
 PKG_SOURCE_VERSION:=4222576d980856f3c9ffc323d2fd78a28f94f085
-PKG_MIRROR_HASH:=1bb5ccf053b1f3f0ebd8dbb3680a792312d119f2dee62658aa813689eba77588
+PKG_SOURCE_SUBDIR:=airoha_voip-2026.09.24~4222576d
+PKG_SOURCE:=airoha_voip-2026.09.24~4222576d.tar.zst
+PKG_MIRROR_HASH:=90a0cd35139c988fcb2c3974b10a9c544eee24f35decab95383a9cccf33bd6ab
 
 PKG_LICENSE:=GPL-2.0-only AND LicenseRef-Proprietary
 PKG_BUILD_PARALLEL:=1
@@ -53,6 +55,14 @@ define KernelPackage/airoha-en7581-pcm-spi/install
 	$(INSTALL_DIR) $(1)/lib/firmware/en75xx/proslic
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/firmware/proslic/si3219x_a_lcqc.fw \
 		$(1)/lib/firmware/en75xx/proslic/
+endef
+
+define Build/Prepare
+	rm -rf $(PKG_BUILD_DIR)
+	mkdir -p $(PKG_BUILD_DIR)
+	$(STAGING_DIR_HOST)/bin/zstd -dc $(DL_DIR)/$(PKG_SOURCE) | \
+		$(TAR) -x -C $(PKG_BUILD_DIR) --strip-components=1
+	$(Build/Patch)
 endef
 
 define Build/Compile
