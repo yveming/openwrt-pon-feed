@@ -39,9 +39,14 @@ define Package/luci-i18n-iptv-zh-cn/install
 	echo "uci set luci.languages.zh_Hans='zh_Hans'; uci commit luci" \
 		> $(1)/etc/uci-defaults/luci-i18n-iptv-zh-cn
 	$(INSTALL_DIR) $(1)$(LUCI_LIBRARYDIR)/i18n
-	$(foreach po,$(wildcard $(PKG_BUILD_DIR)/po/zh_Hans/*.po), \
-		po2lmo $(po) \
-			$(1)$(LUCI_LIBRARYDIR)/i18n/$(basename $(notdir $(po))).zh-cn.lmo;)
+	# po2lmo input only exists after Build/Prepare, so glob at install time
+	# instead of expanding $(wildcard ...) while the Makefile is parsed.
+	for po in $(PKG_BUILD_DIR)/po/zh_Hans/*.po; do \
+		[ -e "$$$$po" ] || continue; \
+		lmo="$$$${po##*/}"; \
+		po2lmo "$$$$po" \
+			"$(1)$(LUCI_LIBRARYDIR)/i18n/$$$${lmo%.po}.zh-cn.lmo"; \
+	done
 endef
 
 $(eval $(call BuildPackage,luci-i18n-iptv-zh-cn))
