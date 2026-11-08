@@ -24,6 +24,7 @@ echo 'src-git pon_feed https://github.com/yveming/openwrt-pon-feed.git' >> feeds
 | `iptv/kernel/iptv` | `kmod-iptv` | `yveming/openwrt-iptv` | IPTV 单设备双 VLAN 驱动 |
 | `iptv/net/iptv-scripts` | `iptv-scripts` | `yveming/openwrt-iptv` | UCI、init 脚本和 apply 助手 |
 | `iptv/luci/luci-app-iptv` | `luci-app-iptv` | `yveming/openwrt-iptv` | IPTV LuCI 页面 |
+| `luci/luci-app-airoha-npu` | `luci-app-airoha-npu` | `rchen14b/luci-app-airoha-npu` | 通用 Airoha AN7581/AN7583 NPU/CPU/Frame Engine 状态页 |
 
 说明：
 
@@ -33,6 +34,9 @@ echo 'src-git pon_feed https://github.com/yveming/openwrt-pon-feed.git' >> feeds
   构建时从上游仓库拉取，不复制进 feed。
 - `iptv` 的 LuCI 包用 `Build/Prepare/luci-app-iptv` 从上游 tar 包中提取
   `luci/luci-app-iptv` 子目录。
+- `luci-app-airoha-npu` 也是 thin package：上游仓库不是 feed 布局，构建时只提取
+  仓库根目录的 `htdocs/`、`root/`、`po/`（根目录版本含完整 ACL，同名子目录是
+  另一份旧副本）。
 
 ## 不在本 feed 的包
 
@@ -40,7 +44,7 @@ echo 'src-git pon_feed https://github.com/yveming/openwrt-pon-feed.git' >> feeds
 
 | 包 | 位置 | 原因 |
 | --- | --- | --- |
-| `luci-app-airoha-*`、`luci-app-mesh-conf`、`luci-app-netmode` | `naoki66/luci-app-airoha` feed | 有独立上游仓库 |
+| `luci-app-airoha-factory`、`-fancontrol`、`-recovery`、`luci-app-mesh-conf`、`luci-app-netmode` | `naoki66/luci-app-airoha` feed | 有独立上游仓库 |
 | `luci-app-mlo` | 主树 `package/emortal/luci-app-mlo` | naoki66 产品树的一部分，没有独立上游仓库 |
 | `airoha-an7581-mt7996-board` | 主树 `package/network/config/` | XR1710G/W1700K 板级配置，没有独立上游仓库 |
 | `znxt-zn515-mt7916-eeprom` | 主树 `package/firmware/` | 板级 firmware 数据 |
