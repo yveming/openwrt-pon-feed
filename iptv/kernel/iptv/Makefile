@@ -19,6 +19,11 @@ PKG_MIRROR_HASH:=a4ef476a998e15d1a753a7a34e5f051b3bbcf5158b9fb453b72debdde3d8d2a
 
 include $(INCLUDE_DIR)/package.mk
 
+# OpenWrt derives PKG_VERSION from PKG_SOURCE_DATE/VERSION for git packages.
+# For this kernel module we want the historical kernel-only package version
+# (6.18.60-r1); the source revision remains pinned by PKG_SOURCE_VERSION.
+PKG_VERSION:=
+
 define KernelPackage/iptv
   SUBMENU:=Network Devices
   TITLE:=IPTV interface support
