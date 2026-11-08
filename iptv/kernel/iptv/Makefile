@@ -22,7 +22,9 @@ include $(INCLUDE_DIR)/package.mk
 # OpenWrt derives PKG_VERSION from PKG_SOURCE_DATE/VERSION for git packages.
 # For this kernel module we want the historical kernel-only package version
 # (6.18.60-r1); the source revision remains pinned by PKG_SOURCE_VERSION.
+# Clear it after package.mk and pin PKG_BUILD_DIR so prepare/compile agree.
 PKG_VERSION:=
+PKG_BUILD_DIR:=$(KERNEL_BUILD_DIR)/$(PKG_NAME)
 
 define KernelPackage/iptv
   SUBMENU:=Network Devices
