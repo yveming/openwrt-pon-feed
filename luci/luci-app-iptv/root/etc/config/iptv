@@ -1,0 +1,7 @@
+config iptv 'config'
+	option enabled '0'
+	option uplink 'pon0'
+	option name 'itv'
+	option service_vid ''
+	option mcast_vid ''
+	option macaddr ''

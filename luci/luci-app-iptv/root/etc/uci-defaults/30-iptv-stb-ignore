@@ -1,0 +1,39 @@
+#!/bin/sh
+# Carrier IPTV blind-plug: the local dnsmasq must not answer STB DHCP
+# requests.  Those go through the iptv demux device to the carrier's DHCP
+# server, which identifies STBs by the vendor class (and serves the lease
+# in the operator's IPTV VLAN).  The OEM rule matches three prefixes:
+# "SCI", "sci" and the binary TLV header 00:00:1f (option 60 sub-type).
+# Shipped with luci-proto-iptv; not a user-tunable.
+
+CONF=/etc/dnsmasq.conf
+MARK="# iptv-stb-ignore (luci-proto-iptv)"
+
+grep -q "$MARK" "$CONF" 2>/dev/null && exit 0
+
+cat >> "$CONF" <<RULES
+$MARK
+# Do not answer DHCP requests carrying the STB vendor class; the request
+# is relayed upstream through the iptv demux device instead.
+#
+# Use --dhcp-match with hex values, not --dhcp-vendorclass: vendorclass
+# matching is a substring search, while a hex value in dhcp-match is
+# left-anchored (a true prefix match).  The three prefixes are the two
+# text forms and the binary TLV header:
+#   SCI  = 53:43:49
+#   sci  = 73:63:69
+#   00 00 1f
+dhcp-match=set:iptv,60,53:43:49
+dhcp-match=set:iptv,60,73:63:69
+dhcp-match=set:iptv,60,00:00:1f
+dhcp-ignore=tag:iptv
+RULES
+
+# If the package is installed at runtime, make the rule effective now.
+# At first boot dnsmasq is not running yet and will pick the file up on
+# its normal start.
+if [ -x /etc/init.d/dnsmasq ] && pidof dnsmasq >/dev/null 2>&1; then
+	/etc/init.d/dnsmasq reload
+fi
+
+exit 0

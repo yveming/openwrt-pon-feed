@@ -1,0 +1,53 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh_Hans\n"
+"Project-Id-Version: luci-app-iptv\n"
+
+msgid "IPTV"
+msgstr "IPTV"
+
+msgid "Create an untagged IPTV device carrying the service and multicast VLANs over the uplink. Add the device to a bridge or interface in Network → Interfaces if needed."
+msgstr "创建承载业务 VLAN 和组播 VLAN 的 untagged IPTV 设备（上行口）。如需桥接或路由，请到“网络 → 接口”中把该设备加入网桥或接口。"
+
+msgid "Enable"
+msgstr "启用"
+
+msgid "Uplink device"
+msgstr "上行设备"
+
+msgid "Network device carrying the operator VLANs, normally pon0."
+msgstr "承载运营商 VLAN 的网络设备，通常是 pon0。"
+
+msgid "Device name"
+msgstr "设备名称"
+
+msgid "Linux name of the IPTV device. Add it to a bridge or interface in Network → Interfaces if needed."
+msgstr "IPTV 设备的 Linux 名称。如需桥接或路由，请到“网络 → 接口”中把该设备加入网桥或接口。"
+
+msgid "Service VLAN"
+msgstr "业务 VLAN"
+
+msgid "Operator VLAN carrying IPTV unicast traffic."
+msgstr "承载 IPTV 单播流量的运营商 VLAN。"
+
+msgid "Multicast VLAN"
+msgstr "组播 VLAN"
+
+msgid "Operator VLAN carrying IPTV multicast traffic."
+msgstr "承载 IPTV 组播流量的运营商 VLAN。"
+
+msgid "The multicast VLAN must differ from the service VLAN."
+msgstr "组播 VLAN 不能与业务 VLAN 相同。"
+
+msgid "MAC address"
+msgstr "MAC 地址"
+
+msgid "Optional. Override the MAC address of the IPTV device."
+msgstr "可选。覆盖 IPTV 设备的 MAC 地址。"
+
+msgid "Use a Linux network device name containing at most 15 characters."
+msgstr "请使用不超过 15 个字符的 Linux 网络设备名。"
+
+msgid "Failed to apply IPTV configuration"
+msgstr "应用 IPTV 配置失败"
