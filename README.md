@@ -2,9 +2,8 @@
 
 PonWrt 的外置软件包 feed（XR1710G / XG2010G 产品线）。
 
-主树（`yveming/openwrt-pon` 的 `pon` 分支）只保留官方基座 + `target/linux`
-产品补丁；所有“官方基座没有的包”集中放在这里，按需通过 `feeds.conf.default`
-引入。
+主树（`yveming/openwrt-pon` 的 `pon` 分支）只保留官方基座、产品补丁和产品树
+自带的包；本 feed 收纳“需要单独打包、但官方基座没有”的包。
 
 ## 用法
 
@@ -15,59 +14,51 @@ echo 'src-git pon_feed https://github.com/yveming/openwrt-pon-feed.git' >> feeds
 ./scripts/feeds install -a
 ```
 
-`configs/*.config` 里的 `CONFIG_PACKAGE_<name>=y` 会照常生效；**feed 没挂上时
-这些符号会被 `make defconfig` 静默丢弃**，所以主树的
-`scripts/check-seed-symbols.sh` 会在构建前做断言。
-
 ## 包清单
 
-| 目录 | 包名 | 用途 | 当前使用位置 |
+| 目录 | 包名 | 来源 | 说明 |
 | --- | --- | --- | --- |
-| `emortal/clientstatus` | `clientstatus` | LAN 客户端在线状态采集守护进程 | 未在种子中启用 |
-| `emortal/luci-app-clientstatus` | `luci-app-clientstatus` + `luci-i18n-clientstatus-zh-cn` | 客户端状态页面 | 未在种子中启用 |
-| `emortal/luci-app-mlo` | `luci-app-mlo` + `luci-i18n-mlo-zh-cn` | Wi-Fi 7 MLO 配置页 | `configs/1710.config` |
-| `firmware/znxt-zn515-mt7916-eeprom` | `znxt-zn515-mt7916-eeprom` | ZNXT ZN515XG-D 的 MT7916 EEPROM | `target/linux/airoha/image/an7581.mk` |
-| `kernel/airoha-voice` | `kmod-airoha-en7581-pcm-spi`、`airoha-voice-ctl` | EN7581 语音（FXS/SLIC/PCM） | `configs/2010.config`、`2010-2g.config`、`an7581.mk` |
-| `kernel/nf-nathelper-fcc` | `kmod-nf-nathelper-fcc` | FCC/HW NAT 辅助模块 | 当前仅本地 `.config` |
-| `luci/luci-app-airoha-factory` | `luci-app-airoha-factory` + i18n | Airoha 工厂模式页 | `configs/1710.config` |
-| `luci/luci-app-airoha-fancontrol` | `luci-app-airoha-fancontrol` + i18n | 风扇控制页 | `configs/1710.config` |
-| `luci/luci-app-airoha-npu` | `luci-app-airoha-npu` + i18n | NPU/PPE/CPU 状态页 | `configs/1710.config`、`2010.config`、`2010-2g.config` |
-| `luci/luci-app-airoha-recovery` | `luci-app-airoha-recovery` + i18n | Airoha 恢复页 | `configs/1710.config` |
-| `luci/luci-app-mesh-conf` | `luci-app-mesh-conf` + i18n | Mesh 配置页 | `configs/1710.config` |
-| `luci/luci-app-netmode` | `luci-app-netmode` + i18n | 网络模式切换页 | `configs/1710.config` |
-| `net/airoha-an7581-mt7996-board` | `airoha-an7581-mt7996-board` | XR1710G 无线/PPE 默认配置与 packet-steering | `target/linux/airoha/image/an7581.mk` |
-| `net/asterisk-chan-en75xx` | `asterisk-chan-en75xx` | Asterisk 的 EN75xx 语音通道 | `configs/2010.config`、`2010-2g.config` |
+| `kernel/airoha-voice` | `kmod-airoha-en7581-pcm-spi`、`airoha-voice-ctl` | `Sirherobrine23/airoha_voip` + 本地补丁 | EN7581 语音（FXS/SLIC/PCM） |
+| `net/asterisk-chan-en75xx` | `asterisk-chan-en75xx` | `Sirherobrine23/airoha_voip` + 本地补丁 | Asterisk EN75xx 语音通道 |
+| `kernel/nf-nathelper-fcc` | `kmod-nf-nathelper-fcc` | `yveming/nf-nathelper-fcc` | FCC/HW NAT 辅助模块 |
+| `iptv/kernel/iptv` | `kmod-iptv` | `yveming/openwrt-iptv` | IPTV 单设备双 VLAN 驱动 |
+| `iptv/net/iptv-scripts` | `iptv-scripts` | `yveming/openwrt-iptv` | UCI、init 脚本和 apply 助手 |
+| `iptv/luci/luci-app-iptv` | `luci-app-iptv` | `yveming/openwrt-iptv` | IPTV LuCI 页面 |
 
 说明：
 
-- `kernel/airoha-voice` 同时产出 `kmod-airoha-en7581-pcm-spi` 和
-  `airoha-voice-ctl` 两个包。
-- LuCI 包的 `po/` 会自动生成 `luci-i18n-*` 子包，表中不逐条列出。
-- `emortal/clientstatus` 系列在三个种子配置里都是 `not set`；保留是为了
-  某些定制机型，若确认不用可以删除。
-- `kmod-nf-nathelper-fcc` 目前只在本地 `.config` 启用，尚未写入机型默认配置。
+- `airoha-voice` 和 `asterisk-chan-en75xx` 使用同一个上游仓库和同一个 commit，
+  共用 `dl/airoha_voip-2026.09.24~4222576d.tar.zst`，`PKG_MIRROR_HASH` 相同。
+- `nf-nathelper-fcc` 和 `iptv` 是 thin package：feed 里只有 Makefile，源码在
+  构建时从上游仓库拉取，不复制进 feed。
+- `iptv` 的 LuCI 包用 `Build/Prepare/luci-app-iptv` 从上游 tar 包中提取
+  `luci/luci-app-iptv` 子目录。
 
-## 迁移与退役
+## 不在本 feed 的包
 
-- `kmod-iptv` / `iptv-scripts` / `luci-app-iptv` 已迁移到独立仓库
-  `yveming/openwrt-iptv`，本 feed 不再包含 IPTV 包。
-- `pon_userspace` 里的旧桥接版 `luci-app-iptv` 已由主树的
-  `patches/feeds/pon_userspace/100-retire-luci-app-iptv.patch` 退役；
-  执行 `feeds update` 后该包会被自动删除，不会再进入索引。
-- 旧的 `luci-proto-iptv` 本地实现已删除；通用 IPTV 现在不依赖 netifd proto。
+这些包已经移到更合适的位置，不由本 feed 维护：
+
+| 包 | 位置 | 原因 |
+| --- | --- | --- |
+| `luci-app-airoha-*`、`luci-app-mesh-conf`、`luci-app-netmode` | `naoki66/luci-app-airoha` feed | 有独立上游仓库 |
+| `luci-app-mlo` | 主树 `package/emortal/luci-app-mlo` | naoki66 产品树的一部分，没有独立上游仓库 |
+| `airoha-an7581-mt7996-board` | 主树 `package/network/config/` | XR1710G/W1700K 板级配置，没有独立上游仓库 |
+| `znxt-zn515-mt7916-eeprom` | 主树 `package/firmware/` | 板级 firmware 数据 |
+| `clientstatus` / `luci-app-clientstatus` | 删除 | 未使用，且只有预编译二进制 |
+
+`pon_drivers`、`pon_userspace` 保持独立 feed，不并入本仓库：
+它们的构建逻辑（kernel module / Rust）由各自上游维护。
 
 ## 维护约定
 
-- 每个包一个目录，目录名尽量与包名一致；目录下只放源码、补丁和打包文件，
-  不放构建产物。
-- 新增/删除包时同步更新本 README 的包清单和使用位置。
+- feed 里只放打包 Makefile、补丁和少量本地文件；上游源码通过 `PKG_SOURCE`
+  获取，不复制进本仓库。
 - 需要顺序的补丁用 `series`，补丁文件名优先使用能说明用途的全称；
   内核 target 补丁保留数字前缀。
-- 上游代码通过 `PKG_SOURCE_*` 固定 commit；本地改动放 `patches/`，
-  并在提交信息里写清楚基线。
+- 改上游版本时同步更新 `PKG_SOURCE_VERSION` 和 `PKG_MIRROR_HASH`。
+- 新增/删除包时同步更新本 README。
 
 ## 来源与许可
 
-各包版权归原作者所有，沿用各包内的许可证；本仓库只做集中托管，便于主树
-保持干净。`kmod-nf-nathelper-fcc` 与 `luci-app-airoha-npu` 分别来自
-`yveming/nf-nathelper-fcc`、`rchen14b/luci-app-airoha-npu` 的导入版本。
+各包版权归原作者所有，沿用各包内的许可证。本仓库只做集中托管和打包，
+便于主树保持干净。
