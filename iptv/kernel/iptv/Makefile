@@ -12,11 +12,11 @@ PKG_MAINTAINER:=ming
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/yveming/openwrt-iptv.git
-PKG_SOURCE_VERSION:=ed62fbefa6cb23602dbf3a6c15cab6e749784e60
-PKG_SOURCE_DATE:=2026-11-08
-PKG_SOURCE_SUBDIR:=openwrt-iptv-2026.11.08~ed62fbe
-PKG_SOURCE:=openwrt-iptv-2026.11.08~ed62fbe.tar.zst
-PKG_MIRROR_HASH:=a0e3284506d085fb4e38cac6669ec859759d14701d9cbb4dca02ea31186fb879
+PKG_SOURCE_VERSION:=3f128eed40b508340b6f7a77be2752b023d04c05
+PKG_SOURCE_DATE:=2026-11-11
+PKG_SOURCE_SUBDIR:=openwrt-iptv-2026.11.11~3f128ee
+PKG_SOURCE:=openwrt-iptv-2026.11.11~3f128ee.tar.zst
+PKG_MIRROR_HASH:=d697e35e61e2695cf4c2285e2f40670b19ac632cf2602a6fa373a28d00003893
 
 # Pin the build dir before package.mk so the stamp paths do not pick up the
 # PKG_VERSION which download.mk derives from PKG_SOURCE_DATE/VERSION. Clear
