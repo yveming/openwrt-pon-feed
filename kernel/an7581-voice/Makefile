@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
-# Thin package for the AN7581 PCM/ZSI/Le9641 source kept in yveming/airoha-voice.
+# Thin package for the AN7581 PCM/ZSI/Le9641 source kept in yveming/airoha-voip.
 
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
@@ -10,12 +10,12 @@ PKG_RELEASE:=4
 PKG_LICENSE:=GPL-2.0-only
 
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/yveming/airoha-voice.git
-PKG_SOURCE_VERSION:=376eccb99ae96d842f8e85fd6e5d1c267afe5932
-PKG_SOURCE_DATE:=2026-11-11
-PKG_SOURCE_SUBDIR:=airoha-voice-2026-11-11~376eccb
-PKG_SOURCE:=airoha-voice-2026-11-11~376eccb.tar.zst
-PKG_MIRROR_HASH:=fda214edcfbb359d56462e4911e4f922c2eb466d3b38760cf8b60230731f1b4a
+PKG_SOURCE_URL:=https://github.com/yveming/airoha-voip.git
+PKG_SOURCE_VERSION:=cdf58d746bc81173ac978ce71f79ce48ddffef09
+PKG_SOURCE_DATE:=2026-11-12
+PKG_SOURCE_SUBDIR:=airoha-voip-2026-11-12~cdf58d7
+PKG_SOURCE:=airoha-voip-2026-11-12~cdf58d7.tar.zst
+PKG_MIRROR_HASH:=294fd3d44b4d8d3b79b7518a63ceac82a03180abf9a869586f8f50032385b653
 
 PKG_BUILD_DIR:=$(KERNEL_BUILD_DIR)/an7581-voice
 PKG_BUILD_PARALLEL:=1

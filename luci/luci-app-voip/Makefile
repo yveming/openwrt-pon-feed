@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 #
-# Thin package for luci-app-voice kept in yveming/airoha-voice.
+# Thin package for luci-app-voip kept in yveming/airoha-voip.
 
 include $(TOPDIR)/rules.mk
 
-LUCI_TITLE:=LuCI Voice / SIP configuration
+LUCI_TITLE:=LuCI VoIP / SIP configuration
 LUCI_DEPENDS:=+luci-base +asterisk +asterisk-chan-an7581 \
 	+asterisk-pjsip +asterisk-res-pjproject +ip-full
 LUCI_PKGARCH:=all
@@ -14,17 +14,17 @@ PKG_PO_VERSION:=0.2.0
 PKG_LICENSE:=Apache-2.0
 
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/yveming/airoha-voice.git
-PKG_SOURCE_VERSION:=376eccb99ae96d842f8e85fd6e5d1c267afe5932
-PKG_SOURCE_DATE:=2026-11-11
-PKG_SOURCE_SUBDIR:=airoha-voice-2026-11-11~376eccb
-PKG_SOURCE:=airoha-voice-2026-11-11~376eccb.tar.zst
-PKG_MIRROR_HASH:=fda214edcfbb359d56462e4911e4f922c2eb466d3b38760cf8b60230731f1b4a
+PKG_SOURCE_URL:=https://github.com/yveming/airoha-voip.git
+PKG_SOURCE_VERSION:=cdf58d746bc81173ac978ce71f79ce48ddffef09
+PKG_SOURCE_DATE:=2026-11-12
+PKG_SOURCE_SUBDIR:=airoha-voip-2026-11-12~cdf58d7
+PKG_SOURCE:=airoha-voip-2026-11-12~cdf58d7.tar.zst
+PKG_MIRROR_HASH:=294fd3d44b4d8d3b79b7518a63ceac82a03180abf9a869586f8f50032385b653
 
-define Build/Prepare/luci-app-voice
+define Build/Prepare/luci-app-voip
 	$(STAGING_DIR_HOST)/bin/zstd -dc $(DL_DIR)/$(PKG_SOURCE) | \
 		$(TAR) -x -C $(PKG_BUILD_DIR) --strip-components=3 \
-			$(PKG_SOURCE_SUBDIR)/luci/luci-app-voice
+			$(PKG_SOURCE_SUBDIR)/luci/luci-app-voip
 endef
 
 include $(TOPDIR)/feeds/luci/luci.mk
@@ -34,10 +34,10 @@ include $(TOPDIR)/feeds/luci/luci.mk
 # explicitly and compile it from the build dir.
 $(eval $(call LuciTranslation,zh-cn,zh_Hans))
 
-define Package/luci-i18n-voice-zh-cn/install
+define Package/luci-i18n-voip-zh-cn/install
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	echo "uci set luci.languages.zh_Hans='zh_Hans'; uci commit luci" \
-		> $(1)/etc/uci-defaults/luci-i18n-voice-zh-cn
+		> $(1)/etc/uci-defaults/luci-i18n-voip-zh-cn
 	$(INSTALL_DIR) $(1)$(LUCI_LIBRARYDIR)/i18n
 	for po in $(PKG_BUILD_DIR)/po/zh_Hans/*.po; do \
 		[ -e "$$$$po" ] || continue; \
@@ -47,4 +47,4 @@ define Package/luci-i18n-voice-zh-cn/install
 	done
 endef
 
-$(eval $(call BuildPackage,luci-i18n-voice-zh-cn))
+$(eval $(call BuildPackage,luci-i18n-voip-zh-cn))
