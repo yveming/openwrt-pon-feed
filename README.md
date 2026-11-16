@@ -24,8 +24,8 @@ echo 'src-git pon_feed https://github.com/yveming/openwrt-pon-feed.git' >> feeds
 | `luci/luci-app-voip` | `luci-app-voip`、`luci-i18n-voip-zh-cn` | `yveming/airoha-voip` | VoIP 配置、`voip-apply`、`phone-led` |
 | `net/asterisk-chan-en75xx` | `asterisk-chan-en75xx` | `Sirherobrine23/airoha_voip` + 本地补丁 | Asterisk EN75xx 语音通道 |
 | `kernel/nf-nathelper-fcc` | `kmod-nf-nathelper-fcc` | `yveming/nf-nathelper-fcc` | FCC/HW NAT 辅助模块 |
-| `iptv/kernel/iptv` | `kmod-iptv` | `yveming/openwrt-iptv` | IPTV 单设备双 VLAN 驱动 + UCI/init/apply |
-| `iptv/luci/luci-app-iptv` | `luci-app-iptv` | `yveming/openwrt-iptv` | IPTV LuCI 页面 |
+| `iptv/kernel/iptv` | `kmod-iptv` | `yveming/iptv-nd` | IPTV 单设备双 VLAN 驱动 + UCI/init/apply |
+| `iptv/luci/luci-app-iptv` | `luci-app-iptv` | `yveming/iptv-nd` | IPTV LuCI 页面 |
 | `luci/luci-app-airoha-npu` | `luci-app-airoha-npu` | `rchen14b/luci-app-airoha-npu` | 通用 Airoha AN7581/AN7583 NPU/CPU/Frame Engine 状态页 |
 
 说明：
@@ -42,8 +42,6 @@ echo 'src-git pon_feed https://github.com/yveming/openwrt-pon-feed.git' >> feeds
   两者缺一不可，所以不再拆 `iptv-scripts`。
 - `iptv` 的 LuCI 包用 `Build/Prepare/luci-app-iptv` 从上游 tar 包中提取
   `luci/luci-app-iptv` 子目录。
-- `iptv` 的本地修正（例如组播控制报文 VLAN）放在各自包的 `patches/` 下，
-  由 `Build/Patch` 在上游源码解包后应用，不在 feed 里复制源码。
 - `luci-app-airoha-npu` 也是 thin package：上游仓库不是 feed 布局，构建时只提取
   仓库根目录的 `htdocs/`、`root/`、`po/`（根目录版本含完整 ACL，同名子目录是
   另一份旧副本）。

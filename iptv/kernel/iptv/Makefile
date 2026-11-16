@@ -1,22 +1,22 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
-# Thin package for the kmod-iptv source kept in yveming/openwrt-iptv.
+# Thin package for the kmod-iptv source kept in yveming/iptv-nd.
 
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=iptv
-PKG_RELEASE:=3
+PKG_RELEASE:=2
 PKG_LICENSE:=GPL-2.0-only AND Apache-2.0
 PKG_MAINTAINER:=ming
 
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/yveming/openwrt-iptv.git
-PKG_SOURCE_VERSION:=3f128eed40b508340b6f7a77be2752b023d04c05
-PKG_SOURCE_DATE:=2026-11-11
-PKG_SOURCE_SUBDIR:=openwrt-iptv-2026.11.11~3f128ee
-PKG_SOURCE:=openwrt-iptv-2026.11.11~3f128ee.tar.zst
-PKG_MIRROR_HASH:=d697e35e61e2695cf4c2285e2f40670b19ac632cf2602a6fa373a28d00003893
+PKG_SOURCE_URL:=https://github.com/yveming/iptv-nd.git
+PKG_SOURCE_VERSION:=0001c0f3d0dd425de9685f49d39f1d81ca3af54a
+PKG_SOURCE_DATE:=2026-11-16
+PKG_SOURCE_SUBDIR:=iptv-nd-2026.11.16~0001c0f
+PKG_SOURCE:=iptv-nd-2026.11.16~0001c0f.tar.zst
+PKG_MIRROR_HASH:=2cd294269c799ad3997788af02611d4e5f628b37f8e8611f315f9dc9367f94a9
 
 # Pin the build dir before package.mk so the stamp paths do not pick up the
 # PKG_VERSION which download.mk derives from PKG_SOURCE_DATE/VERSION. Clear
