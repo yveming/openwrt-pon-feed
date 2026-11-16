@@ -1,0 +1,43 @@
+diff -ruN luci-a/htdocs/luci-static/resources/view/iptv/config.js luci-b/htdocs/luci-static/resources/view/iptv/config.js
+--- luci-a/htdocs/luci-static/resources/view/iptv/config.js	2026-11-11 21:36:21.000000000 +0800
++++ luci-b/htdocs/luci-static/resources/view/iptv/config.js	2026-11-16 17:46:58.307330467 +0800
+@@ -21,6 +21,7 @@
+ 	"\toption name 'itv'\n" +
+ 	"\toption service_vid ''\n" +
+ 	"\toption mcast_vid ''\n" +
++	"\toption igmp_vid 'mcast'\n" +
+ 	"\toption macaddr ''\n";
+ 
+ return view.extend({
+@@ -106,6 +107,15 @@
+ 			return true;
+ 		};
+ 
++		o = s.option(form.ListValue, 'igmp_vid',
++			_('Multicast control VLAN'),
++			_('VLAN used for upstream IGMP/MLD control messages.'));
++		o.value('mcast', _('Multicast VLAN'));
++		o.value('service', _('Service VLAN'));
++		o.default = 'mcast';
++		o.rmempty = false;
++		o.depends('enabled', '1');
++
+ 		o = s.option(form.Value, 'macaddr', _('MAC address'),
+ 			_('Optional. Override the MAC address of the IPTV device.'));
+ 		o.datatype = 'macaddr';
+diff -ruN luci-a/po/zh_Hans/iptv.po luci-b/po/zh_Hans/iptv.po
+--- luci-a/po/zh_Hans/iptv.po	2026-11-11 21:36:21.000000000 +0800
++++ luci-b/po/zh_Hans/iptv.po	2026-11-16 17:47:04.159329754 +0800
+@@ -40,6 +40,12 @@
+ msgid "The multicast VLAN must differ from the service VLAN."
+ msgstr "组播 VLAN 不能与业务 VLAN 相同。"
+ 
++msgid "Multicast control VLAN"
++msgstr "组播控制报文 VLAN"
++
++msgid "VLAN used for upstream IGMP/MLD control messages."
++msgstr "IGMP/MLD 控制报文上行使用的 VLAN"
++
+ msgid "MAC address"
+ msgstr "MAC 地址"
+ 

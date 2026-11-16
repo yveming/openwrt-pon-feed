@@ -42,6 +42,8 @@ echo 'src-git pon_feed https://github.com/yveming/openwrt-pon-feed.git' >> feeds
   两者缺一不可，所以不再拆 `iptv-scripts`。
 - `iptv` 的 LuCI 包用 `Build/Prepare/luci-app-iptv` 从上游 tar 包中提取
   `luci/luci-app-iptv` 子目录。
+- `iptv` 的本地修正（例如组播控制报文 VLAN）放在各自包的 `patches/` 下，
+  由 `Build/Patch` 在上游源码解包后应用，不在 feed 里复制源码。
 - `luci-app-airoha-npu` 也是 thin package：上游仓库不是 feed 布局，构建时只提取
   仓库根目录的 `htdocs/`、`root/`、`po/`（根目录版本含完整 ACL，同名子目录是
   另一份旧副本）。
