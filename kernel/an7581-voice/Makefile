@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=an7581-voice
-PKG_RELEASE:=5
+PKG_RELEASE:=4
 PKG_LICENSE:=GPL-2.0-only
 
 PKG_SOURCE_PROTO:=git
