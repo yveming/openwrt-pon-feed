@@ -33,9 +33,9 @@ echo 'src-git pon_feed https://github.com/yveming/openwrt-pon-feed.git' >> feeds
 - `airoha-voice` 和 `asterisk-chan-en75xx` 使用同一个上游仓库和同一个 commit，
   共用 `dl/airoha_voip-2026.09.24~4222576d.tar.zst`，`PKG_MIRROR_HASH` 相同。
 - `an7581-voice`、`asterisk-chan-an7581` 和 `luci-app-voip` 是
-  `yveming/airoha-voip` 的 thin package，统一固定到
-  `PKG_SOURCE_VERSION` 指定的 commit；更新源码时三个 Makefile 的版本和
-  `PKG_MIRROR_HASH` 要一起改。
+  `yveming/airoha-voip` 的 thin package。各包只固定自己提取的子目录；
+  只改某个子目录时，只更新对应 Makefile 的 pin 和 `PKG_MIRROR_HASH`，
+  未变化的 kmod 不需要为了对齐 pin 而重建。
 - `nf-nathelper-fcc` 和 `iptv` 是 thin package：feed 里只有 Makefile，源码在
   构建时从上游仓库拉取，不复制进 feed。
 - `iptv` 的驱动、UCI 配置、init 脚本和 apply 逻辑合成一个 `kmod-iptv` 包；
