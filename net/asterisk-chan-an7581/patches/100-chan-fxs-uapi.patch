@@ -1,0 +1,142 @@
+--- a/chan_an7581.c
++++ b/chan_an7581.c
+@@ -2,10 +2,10 @@
+ /*
+  * Minimal Asterisk channel driver for the AN7581 + Le9641 FXS line.
+  *
+- * Audio:  /dev/an7581-pcm, 8 kHz signed linear, 16-bit, 10 ms frames.
++ * Audio:  /dev/fxs0-pcm, 8 kHz signed linear, 16-bit, 10 ms frames.
+  *         The fd is registered with Asterisk and polled by the channel
+  *         thread; there is no private audio thread.
+- * Control:/dev/an7581-slic, hook events plus ring/active ioctls.
++ * Control:/dev/fxs0, hook events plus ring/active ioctls.
+  *
+  * Locking: Asterisk may hold the channel lock when it calls hangup(), so
+  * the channel lock is always taken before pvt->lock.  Never take the
+@@ -40,8 +40,10 @@
+ #include "asterisk/stasis_channels.h"
+ #include "asterisk/utils.h"
+ 
+-#define SLIC_DEV	"/dev/an7581-slic"
+-#define PCM_DEV		"/dev/an7581-pcm"
++#include "fxs.h"
++
++#define SLIC_DEV	"/dev/fxs0"
++#define PCM_DEV		"/dev/fxs0-pcm"
+ #define FRAME_SAMPLES	160
+ #define VOICE_RATE	8000
+ #define LEC_SYSFS	"/sys/module/an7581_pcm/parameters/lec_enable"
+@@ -59,15 +61,6 @@
+ 	int16_t x1, x2, y1, y2;
+ };
+ 
+-#define AN7581_SLIC_IOC_MAGIC	'V'
+-struct an7581_slic_event {
+-	uint32_t hook;
+-	uint32_t state;
+-};
+-#define AN7581_SLIC_SET_RING	_IOW(AN7581_SLIC_IOC_MAGIC, 2, int)
+-#define AN7581_SLIC_SET_ACTIVE	_IOW(AN7581_SLIC_IOC_MAGIC, 3, int)
+-#define AN7581_SLIC_GET_HOOK	_IOR(AN7581_SLIC_IOC_MAGIC, 4, int)
+-
+ struct an7581_pvt {
+ 	struct ast_channel *owner;
+ 	struct ast_channel *audio_chan;
+@@ -331,7 +324,7 @@
+ 		return -1;
+ 	}
+ 
+-	/* an7581-pcm starts streaming and pre-fills TX silence on open. */
++	/* an7581-pcm (now via fxs-core) starts streaming and pre-fills TX silence on open. */
+ 	p->audio_active = 1;
+ 	__atomic_store_n(&p->audio_chan, chan, __ATOMIC_RELEASE);
+ 	p->rx_filled = 0;
+@@ -443,7 +436,7 @@
+ 	 * thread takes the same lock, so it cannot observe the new channel
+ 	 * before the SLIC is in the active state.
+ 	 */
+-	ioctl(p->ctl_fd, AN7581_SLIC_SET_ACTIVE, &on);
++	ioctl(p->ctl_fd, FXS_IOC_SET_ACTIVE, &on);
+ 	p->owner = chan;
+ 	__atomic_store_n(&p->dialing, 1, __ATOMIC_RELAXED);
+ 	__atomic_store_n(&p->collecting, 1, __ATOMIC_RELAXED);
+@@ -463,7 +456,7 @@
+ {
+ 	struct an7581_pvt *p = data;
+ 	struct pollfd pfd;
+-	struct an7581_slic_event ev;
++	struct fxs_event ev;
+ 	int hook = 0;
+ 	int answer = 0, outgoing = 0, hangup = 0;
+ 	struct ast_channel *chan = NULL;
+@@ -472,7 +465,7 @@
+ 	pfd.fd = p->ctl_fd;
+ 	pfd.events = POLLIN;
+ 
+-	if (!ioctl(p->ctl_fd, AN7581_SLIC_GET_HOOK, &hook))
++	if (!ioctl(p->ctl_fd, FXS_IOC_GET_HOOK, &hook))
+ 		p->hook = hook;
+ 
+ 	/* If Asterisk is started while the phone is already offhook, start
+@@ -494,12 +487,14 @@
+ 			continue;
+ 		if (read(p->ctl_fd, &ev, sizeof(ev)) != sizeof(ev))
+ 			continue;
++		if (ev.type != FXS_EV_HOOK)
++			continue;
+ 
+ 		answer = outgoing = hangup = 0;
+ 		chan = NULL;
+ 
+ 		ast_mutex_lock(&p->lock);
+-		p->hook = ev.hook;
++		p->hook = ev.value;
+ 		if (p->hook) {
+ 			if (p->incoming_ringing && p->owner) {
+ 				answer = 1;
+@@ -529,8 +524,8 @@
+ 		if (answer) {
+ 			int off = 0, on = 1;
+ 
+-			ioctl(p->ctl_fd, AN7581_SLIC_SET_RING, &off);
+-			ioctl(p->ctl_fd, AN7581_SLIC_SET_ACTIVE, &on);
++			ioctl(p->ctl_fd, FXS_IOC_SET_RING, &off);
++			ioctl(p->ctl_fd, FXS_IOC_SET_ACTIVE, &on);
+ 			if (an7581_start_audio(chan)) {
+ 				ast_log(LOG_ERROR, "AN7581: cannot start audio on FXS answer\n");
+ 				ast_softhangup(chan, AST_SOFTHANGUP_DEV);
+@@ -545,8 +540,8 @@
+ 		if (hangup) {
+ 			int off = 0, idle = 0;
+ 
+-			ioctl(p->ctl_fd, AN7581_SLIC_SET_RING, &off);
+-			ioctl(p->ctl_fd, AN7581_SLIC_SET_ACTIVE, &idle);
++			ioctl(p->ctl_fd, FXS_IOC_SET_RING, &off);
++			ioctl(p->ctl_fd, FXS_IOC_SET_ACTIVE, &idle);
+ 			ast_log(LOG_NOTICE, "AN7581: FXS went onhook\n");
+ 			ast_softhangup(chan, AST_SOFTHANGUP_EXPLICIT);
+ 		}
+@@ -593,10 +588,10 @@
+ 	 */
+ 	offhook = pvt->hook;
+ 	if (offhook) {
+-		ioctl(pvt->ctl_fd, AN7581_SLIC_SET_ACTIVE, &on);
++		ioctl(pvt->ctl_fd, FXS_IOC_SET_ACTIVE, &on);
+ 		pvt->incoming_ringing = 0;
+ 	} else {
+-		ioctl(pvt->ctl_fd, AN7581_SLIC_SET_RING, &on);
++		ioctl(pvt->ctl_fd, FXS_IOC_SET_RING, &on);
+ 		pvt->incoming_ringing = 1;
+ 	}
+ 	pvt->owner = chan;
+@@ -632,8 +627,8 @@
+ 	current = (p->owner == chan);
+ 	if (current || !p->owner) {
+ 		an7581_stop_audio_locked(p, chan);
+-		ioctl(p->ctl_fd, AN7581_SLIC_SET_RING, &off);
+-		ioctl(p->ctl_fd, AN7581_SLIC_SET_ACTIVE, &idle);
++		ioctl(p->ctl_fd, FXS_IOC_SET_RING, &off);
++		ioctl(p->ctl_fd, FXS_IOC_SET_ACTIVE, &idle);
+ 		p->owner = NULL;
+ 		__atomic_store_n(&p->dialing, 0, __ATOMIC_RELAXED);
+ 		__atomic_store_n(&p->collecting, 0, __ATOMIC_RELAXED);
