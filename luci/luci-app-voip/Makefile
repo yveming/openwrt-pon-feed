@@ -9,7 +9,7 @@ LUCI_DEPENDS:=+luci-base +asterisk +asterisk-chan-an7581 \
 	+asterisk-pjsip +asterisk-res-pjproject +ip-full
 LUCI_PKGARCH:=all
 PKG_VERSION:=0.2.1
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 PKG_PO_VERSION:=0.2.1
 PKG_LICENSE:=Apache-2.0
 
