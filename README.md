@@ -19,8 +19,8 @@ echo 'src-git pon_feed https://github.com/yveming/openwrt-pon-feed.git' >> feeds
 | 目录 | 包名 | 来源 | 说明 |
 | --- | --- | --- | --- |
 | `kernel/airoha-voice` | `kmod-airoha-en7581-pcm-spi`、`airoha-voice-ctl` | `Sirherobrine23/airoha_voip` + 本地补丁 | EN7581 语音（FXS/SLIC/PCM） |
-| `kernel/an7581-voice` | `kmod-an7581-zsi`、`kmod-an7581-pcm`、`kmod-an7581-slic-le9641` | `yveming/airoha-voip` | AN7581 PCM/ZSI + Le9641 FXS |
-| `net/asterisk-chan-an7581` | `asterisk-chan-an7581` | `yveming/airoha-voip` | AN7581/Le9641 Asterisk 通道 |
+| `kernel/an7581-voice` | `kmod-an7581-zsi`、`kmod-an7581-pcm`、`kmod-an7581-slic-le9641`、`kmod-an7581-fxs` | `yveming/airoha-voip` | AN7581 PCM/ZSI + SLIC 后端 + FXS provider |
+| `net/asterisk-chan-fxs` | `asterisk-chan-fxs` | 本地 | 通用 FXS Asterisk 通道（`/dev/fxsN`） |
 | `luci/luci-app-voip` | `luci-app-voip`、`luci-i18n-voip-zh-cn` | `yveming/airoha-voip` | VoIP 配置、`voip-apply`、`phone-led` |
 | `net/asterisk-chan-en75xx` | `asterisk-chan-en75xx` | `Sirherobrine23/airoha_voip` + 本地补丁 | Asterisk EN75xx 语音通道 |
 | `kernel/nf-nathelper-fcc` | `kmod-nf-nathelper-fcc` | `yveming/nf-nathelper-fcc` | FCC/HW NAT 辅助模块 |
@@ -32,10 +32,10 @@ echo 'src-git pon_feed https://github.com/yveming/openwrt-pon-feed.git' >> feeds
 
 - `airoha-voice` 和 `asterisk-chan-en75xx` 使用同一个上游仓库和同一个 commit，
   共用 `dl/airoha_voip-2026.09.24~4222576d.tar.zst`，`PKG_MIRROR_HASH` 相同。
-- `an7581-voice`、`asterisk-chan-an7581` 和 `luci-app-voip` 是
-  `yveming/airoha-voip` 的 thin package。各包只固定自己提取的子目录；
-  只改某个子目录时，只更新对应 Makefile 的 pin 和 `PKG_MIRROR_HASH`，
-  未变化的 kmod 不需要为了对齐 pin 而重建。
+- `an7581-voice` 和 `luci-app-voip` 是 `yveming/airoha-voip` 的 thin
+  package。各包只固定自己提取的子目录；只改某个子目录时，只更新对应
+  Makefile 的 pin 和 `PKG_MIRROR_HASH`，未变化的 kmod 不需要为了对齐 pin
+  而重建。`asterisk-chan-fxs` 的源码直接在 feed 内维护。
 - `nf-nathelper-fcc` 和 `iptv` 是 thin package：feed 里只有 Makefile，源码在
   构建时从上游仓库拉取，不复制进 feed。
 - `iptv` 的驱动、UCI 配置、init 脚本和 apply 逻辑合成一个 `kmod-iptv` 包；

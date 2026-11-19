@@ -1,12 +1,13 @@
 --- /dev/null
 +++ b/an7581_fxs.c
-@@ -0,0 +1,143 @@
+@@ -0,0 +1,128 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
-+ * AN7581 + Le9641 FXS provider for fxs-core.
++ * AN7581 FXS provider for fxs-core.
 + *
-+ * The PCM engine and the Le9641 SLIC keep their register-level code; this
-+ * file is only the glue that exposes them as one generic FXS line.
++ * The PCM engine and the SLIC backend keep their register-level code; this
++ * file binds the PCM engine and whichever SLIC backend detects the hardware
++ * to one generic FXS line.
 + */
 +
 +#include <linux/module.h>
@@ -26,52 +27,7 @@
 +extern ssize_t an7581_pcm_fxs_write(struct file *file, const char __user *buf,
 +				    size_t count, loff_t *ppos);
 +extern __poll_t an7581_pcm_fxs_poll(struct file *file, poll_table *wait);
-+
-+/* an7581_slic_le9641.c */
-+extern bool an7581_slic_fxs_ready(void);
-+extern int an7581_slic_fxs_set_ring(bool on);
-+extern int an7581_slic_fxs_set_active(bool on);
-+extern int an7581_slic_fxs_get_hook(bool *offhook);
-+extern int an7581_slic_fxs_set_hook_cb(void (*cb)(void *data, bool offhook),
-+				       void *data);
-+
-+static void an7581_hook_cb(void *data, bool offhook)
-+{
-+	struct fxs_event event = {
-+		.type = FXS_EV_HOOK,
-+		.value = offhook,
-+	};
-+
-+	fxs_event_push(data, &event);
-+}
-+
-+static int an7581_slic_init(struct fxs_line *line)
-+{
-+	if (!an7581_pcm_fxs_ready() || !an7581_slic_fxs_ready())
-+		return -ENODEV;
-+
-+	return an7581_slic_fxs_set_hook_cb(an7581_hook_cb, line);
-+}
-+
-+static void an7581_slic_exit(struct fxs_line *line)
-+{
-+	an7581_slic_fxs_set_hook_cb(NULL, NULL);
-+}
-+
-+static int an7581_set_ring(struct fxs_line *line, bool on)
-+{
-+	return an7581_slic_fxs_set_ring(on);
-+}
-+
-+static int an7581_set_active(struct fxs_line *line, bool on)
-+{
-+	return an7581_slic_fxs_set_active(on);
-+}
-+
-+static int an7581_get_hook(struct fxs_line *line, bool *offhook)
-+{
-+	return an7581_slic_fxs_get_hook(offhook);
-+}
++extern int an7581_pcm_fxs_set_echo_cancel(bool on);
 +
 +static int an7581_pcm_open(struct fxs_line *line, struct file *file)
 +{
@@ -102,33 +58,59 @@
 +	return an7581_pcm_fxs_poll(file, wait);
 +}
 +
-+static const struct fxs_slic_ops an7581_slic_ops = {
-+	.caps		= FXS_CAP_RING | FXS_CAP_HOOK,
-+	.init		= an7581_slic_init,
-+	.exit		= an7581_slic_exit,
-+	.set_ring	= an7581_set_ring,
-+	.set_active	= an7581_set_active,
-+	.get_hook	= an7581_get_hook,
-+};
++static int an7581_pcm_set_echo_cancel(struct fxs_line *line, bool on)
++{
++	return an7581_pcm_fxs_set_echo_cancel(on);
++}
 +
 +static const struct fxs_pcm_ops an7581_pcm_ops = {
-+	.open	= an7581_pcm_open,
-+	.close	= an7581_pcm_close,
-+	.read	= an7581_pcm_read,
-+	.write	= an7581_pcm_write,
-+	.poll	= an7581_pcm_poll,
++	.open		= an7581_pcm_open,
++	.close		= an7581_pcm_close,
++	.read		= an7581_pcm_read,
++	.write		= an7581_pcm_write,
++	.poll		= an7581_pcm_poll,
++	.set_echo_cancel = an7581_pcm_set_echo_cancel,
 +};
 +
++static char *line_name = "line1";
++module_param(line_name, charp, 0444);
++MODULE_PARM_DESC(line_name, "FXS line name exposed through fxs-core");
++
 +static struct fxs_line *an7581_line;
++static struct module *an7581_slic_owner;
 +
 +static int __init an7581_fxs_init(void)
 +{
-+	an7581_line = fxs_register_line(NULL, "line1", THIS_MODULE,
-+					&an7581_slic_ops, NULL,
-+					&an7581_pcm_ops, NULL);
-+	if (IS_ERR(an7581_line))
-+		return PTR_ERR(an7581_line);
++	const struct fxs_slic_ops *slic_ops;
++	const char *slic_name = "unknown";
++	struct module *slic_owner = NULL;
++	void *slic_priv = NULL;
 +
++	if (!an7581_pcm_fxs_ready())
++		return -ENODEV;
++
++	slic_ops = fxs_slic_probe(NULL, &slic_priv, &slic_owner, &slic_name);
++	if (IS_ERR(slic_ops)) {
++		pr_err("an7581-fxs: no supported SLIC detected\n");
++		return PTR_ERR(slic_ops);
++	}
++	if (slic_owner && !try_module_get(slic_owner)) {
++		pr_err("an7581-fxs: cannot pin SLIC backend %s\n", slic_name);
++		return -ENODEV;
++	}
++	an7581_slic_owner = slic_owner;
++
++	an7581_line = fxs_register_line(NULL, line_name, THIS_MODULE,
++					slic_ops, slic_priv,
++					&an7581_pcm_ops, NULL);
++	if (IS_ERR(an7581_line)) {
++		if (an7581_slic_owner)
++			module_put(an7581_slic_owner);
++		an7581_slic_owner = NULL;
++		return PTR_ERR(an7581_line);
++	}
++
++	pr_info("an7581-fxs: %s line using %s SLIC\n", line_name, slic_name);
 +	return 0;
 +}
 +
@@ -136,11 +118,14 @@
 +{
 +	fxs_unregister_line(an7581_line);
 +	an7581_line = NULL;
++	if (an7581_slic_owner)
++		module_put(an7581_slic_owner);
++	an7581_slic_owner = NULL;
 +}
 +
 +module_init(an7581_fxs_init);
 +module_exit(an7581_fxs_exit);
 +
 +MODULE_INFO(author, "ming");
-+MODULE_INFO(description, "AN7581 Le9641 FXS line provider");
++MODULE_INFO(description, "AN7581 FXS line provider");
 +MODULE_LICENSE("GPL");

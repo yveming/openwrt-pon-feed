@@ -41,6 +41,7 @@
 
 struct fxs_line {
 	struct device		*dev;
+	struct device		*class_dev;
 	struct module		*owner;
 	char			*name;
 	int			index;
@@ -58,7 +59,7 @@ struct fxs_line {
 
 	struct mutex		lock;		/* line state */
 	spinlock_t		event_lock;	/* event fifo */
-	struct kfifo		event_fifo;
+	DECLARE_KFIFO_PTR(event_fifo, struct fxs_event);
 	wait_queue_head_t	event_wait;
 	wait_queue_head_t	release_wait;
 
@@ -81,6 +82,11 @@ struct fxs_line {
 static DEFINE_IDA(fxs_ida);
 static LIST_HEAD(fxs_lines);
 static DEFINE_MUTEX(fxs_lines_lock);
+
+static LIST_HEAD(fxs_slic_drivers);
+static DEFINE_MUTEX(fxs_slic_lock);
+
+static struct class *fxs_class;
 
 static void fxs_line_put(struct fxs_line *line)
 {
@@ -460,6 +466,18 @@ static int fxs_get_line_name(struct fxs_line *line, unsigned long arg)
 	return 0;
 }
 
+static int fxs_set_echo_cancel(struct fxs_line *line, unsigned long arg)
+{
+	int val;
+
+	if (get_user(val, (int __user *)arg))
+		return -EFAULT;
+	if (!line->pcm || !line->pcm->set_echo_cancel)
+		return -EOPNOTSUPP;
+
+	return line->pcm->set_echo_cancel(line, !!val);
+}
+
 static int fxs_do_ioctl(struct fxs_line *line, unsigned int cmd,
 			unsigned long arg, bool control)
 {
@@ -496,6 +514,10 @@ static int fxs_do_ioctl(struct fxs_line *line, unsigned int cmd,
 		if (!control)
 			return -ENOTTY;
 		return fxs_release(line);
+	case FXS_IOC_SET_ECHO_CANCEL:
+		if (!control)
+			return -ENOTTY;
+		return fxs_set_echo_cancel(line, arg);
 	default:
 		return -ENOTTY;
 	}
@@ -656,7 +678,15 @@ struct fxs_line *fxs_register_line(struct device *dev, const char *name,
 	if (slic->init) {
 		ret = slic->init(line);
 		if (ret)
-			goto err_registered;
+			goto err_slic;
+	}
+
+	line->class_dev = device_create(fxs_class, dev, 0, line,
+					"fxs%d", id);
+	if (IS_ERR(line->class_dev)) {
+		ret = PTR_ERR(line->class_dev);
+		line->class_dev = NULL;
+		goto err_slic;
 	}
 
 	if (dev)
@@ -668,7 +698,9 @@ struct fxs_line *fxs_register_line(struct device *dev, const char *name,
 
 	return line;
 
-err_registered:
+err_slic:
+	if (slic->exit)
+		slic->exit(line);
 	mutex_lock(&fxs_lines_lock);
 	list_del(&line->list);
 	mutex_unlock(&fxs_lines_lock);
@@ -699,6 +731,8 @@ void fxs_unregister_line(struct fxs_line *line)
 	WRITE_ONCE(line->removing, true);
 	wake_up_all(&line->event_wait);
 
+	if (line->class_dev)
+		device_unregister(line->class_dev);
 	misc_deregister(&line->pcm_misc);
 	misc_deregister(&line->ctl_misc);
 
@@ -739,8 +773,161 @@ void fxs_event_push(struct fxs_line *line, const struct fxs_event *event)
 }
 EXPORT_SYMBOL_GPL(fxs_event_push);
 
+int fxs_register_slic_driver(struct fxs_slic_driver *drv)
+{
+	if (!drv || !drv->name || !drv->detect || !drv->ops)
+		return -EINVAL;
+
+	INIT_LIST_HEAD(&drv->list);
+	mutex_lock(&fxs_slic_lock);
+	list_add_tail(&drv->list, &fxs_slic_drivers);
+	mutex_unlock(&fxs_slic_lock);
+
+	pr_info("fxs-core: SLIC backend %s registered\n", drv->name);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(fxs_register_slic_driver);
+
+void fxs_unregister_slic_driver(struct fxs_slic_driver *drv)
+{
+	if (!drv)
+		return;
+
+	mutex_lock(&fxs_slic_lock);
+	list_del_init(&drv->list);
+	mutex_unlock(&fxs_slic_lock);
+}
+EXPORT_SYMBOL_GPL(fxs_unregister_slic_driver);
+
+const struct fxs_slic_ops *fxs_slic_probe(void *ctx, void **priv,
+					  struct module **owner,
+					  const char **name)
+{
+	const struct fxs_slic_ops *ops = ERR_PTR(-ENODEV);
+	struct fxs_slic_driver *drv;
+
+	mutex_lock(&fxs_slic_lock);
+	list_for_each_entry(drv, &fxs_slic_drivers, list) {
+		if (drv->detect(ctx))
+			continue;
+		if (priv)
+			*priv = drv->priv;
+		if (owner)
+			*owner = drv->owner;
+		if (name)
+			*name = drv->name;
+		ops = drv->ops;
+		break;
+	}
+	mutex_unlock(&fxs_slic_lock);
+
+	return ops;
+}
+EXPORT_SYMBOL_GPL(fxs_slic_probe);
+
+static const char *fxs_state_name(u32 state)
+{
+	switch (state) {
+	case FXS_STATE_IDLE:
+		return "idle";
+	case FXS_STATE_RINGING:
+		return "ringing";
+	case FXS_STATE_ACTIVE:
+		return "active";
+	case FXS_STATE_FAULT:
+		return "fault";
+	default:
+		return "unknown";
+	}
+}
+
+static ssize_t line_name_show(struct device *dev,
+			      struct device_attribute *attr, char *buf)
+{
+	struct fxs_line *line = dev_get_drvdata(dev);
+
+	return sysfs_emit(buf, "%s\n", line->name);
+}
+static DEVICE_ATTR_RO(line_name);
+
+static ssize_t state_show(struct device *dev,
+			  struct device_attribute *attr, char *buf)
+{
+	struct fxs_line *line = dev_get_drvdata(dev);
+	const char *name;
+
+	mutex_lock(&line->lock);
+	name = fxs_state_name(line->state);
+	mutex_unlock(&line->lock);
+
+	return sysfs_emit(buf, "%s\n", name);
+}
+static DEVICE_ATTR_RO(state);
+
+static ssize_t hook_show(struct device *dev,
+			 struct device_attribute *attr, char *buf)
+{
+	struct fxs_line *line = dev_get_drvdata(dev);
+	bool hook = false;
+	int ret = -EOPNOTSUPP;
+
+	mutex_lock(&line->lock);
+	if (line->slic && line->slic->get_hook)
+		ret = line->slic->get_hook(line, &hook);
+	mutex_unlock(&line->lock);
+
+	if (ret)
+		return sysfs_emit(buf, "unknown\n");
+
+	return sysfs_emit(buf, "%s\n", hook ? "offhook" : "onhook");
+}
+static DEVICE_ATTR_RO(hook);
+
+static ssize_t ringing_show(struct device *dev,
+			    struct device_attribute *attr, char *buf)
+{
+	struct fxs_line *line = dev_get_drvdata(dev);
+	bool ringing;
+
+	mutex_lock(&line->lock);
+	ringing = line->ringing;
+	mutex_unlock(&line->lock);
+
+	return sysfs_emit(buf, "%d\n", ringing);
+}
+static DEVICE_ATTR_RO(ringing);
+
+static ssize_t active_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct fxs_line *line = dev_get_drvdata(dev);
+	bool active;
+
+	mutex_lock(&line->lock);
+	active = line->active;
+	mutex_unlock(&line->lock);
+
+	return sysfs_emit(buf, "%d\n", active);
+}
+static DEVICE_ATTR_RO(active);
+
+static struct attribute *fxs_line_attrs[] = {
+	&dev_attr_line_name.attr,
+	&dev_attr_state.attr,
+	&dev_attr_hook.attr,
+	&dev_attr_ringing.attr,
+	&dev_attr_active.attr,
+	NULL,
+};
+ATTRIBUTE_GROUPS(fxs_line);
+
 static int __init fxs_core_init(void)
 {
+	fxs_class = class_create("fxs");
+	if (IS_ERR(fxs_class))
+		return PTR_ERR(fxs_class);
+	fxs_class->dev_groups = fxs_line_groups;
+
 	pr_info("fxs-core: generic FXS line core\n");
 	return 0;
 }
@@ -758,6 +945,8 @@ static void __exit fxs_core_exit(void)
 			break;
 		fxs_unregister_line(line);
 	}
+	class_destroy(fxs_class);
+	fxs_class = NULL;
 	pr_info("fxs-core: unloaded\n");
 }
 

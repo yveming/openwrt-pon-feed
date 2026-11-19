@@ -8,7 +8,15 @@
  #include <linux/poll.h>
  #include <linux/wait.h>
  #include <linux/workqueue.h>
-@@ -160,10 +159,8 @@
+@@ -30,6 +29,7 @@
+ #include <linux/uaccess.h>
+ 
+ #include "an7581_zsi.h"
++#include "fxs.h"
+ 
+ #define DRV_NAME	"an7581-slic"
+ 
+@@ -160,10 +160,8 @@
  	u8 rcn;
  	u8 pcn;
  	bool initialised;
@@ -19,7 +27,7 @@
  	bool hook_offhook;
  	bool hook_changed;
  	bool ringing;
-@@ -171,6 +168,8 @@
+@@ -171,6 +169,8 @@
  	unsigned int ring_on_ticks;
  	unsigned int ring_period_ticks;
  	unsigned int hook_streak;
@@ -28,7 +36,7 @@
  };
  
  static struct an7581_slic *slic_dbg;
-@@ -411,6 +410,8 @@
+@@ -411,6 +411,8 @@
  				}
  				slic->hook_changed = true;
  				wake_up_interruptible(&slic->hook_wait);
@@ -37,18 +45,22 @@
  				dev_info(slic->dev, "hook event: %s\n",
  					 offhook ? "offhook" : "onhook");
  			}
-@@ -427,151 +428,90 @@
+@@ -427,150 +429,138 @@
  	}
  }
  
 -static int slic_dev_open(struct inode *inode, struct file *file)
-+bool an7581_slic_fxs_ready(void)
++static void le9641_hook_cb(void *data, bool offhook)
 +{
-+	return slic_dbg != NULL;
-+}
-+EXPORT_SYMBOL_GPL(an7581_slic_fxs_ready);
++	struct fxs_event event = {
++		.type = FXS_EV_HOOK,
++		.value = offhook,
++	};
 +
-+int an7581_slic_fxs_set_ring(bool on)
++	fxs_event_push(data, &event);
++}
++
++static int le9641_detect(void *ctx)
  {
  	struct an7581_slic *slic = slic_dbg;
 +	int ret;
@@ -59,37 +71,56 @@
 -		return -EBUSY;
 -	file->private_data = slic;
 -	return 0;
--}
++
++	mutex_lock(&slic->lock);
++	ret = slic_detect(slic);
++	mutex_unlock(&slic->lock);
++
++	return ret;
+ }
  
 -static int slic_dev_release(struct inode *inode, struct file *file)
--{
++static int le9641_init(struct fxs_line *line)
+ {
 -	struct an7581_slic *slic = file->private_data;
-+	mutex_lock(&slic->lock);
-+	if (on) {
-+		slic->ringing = true;
-+		slic->ring_tick = 0;
-+		slic->ring_on_ticks = RING_ON_MS / RING_TICK_MS;
-+		slic->ring_period_ticks =
-+			(RING_ON_MS + RING_OFF_MS) / RING_TICK_MS;
-+		slic->hook_streak = 0;
-+		ret = slic_set_state(slic, VP886_SS_BAL_RING, false);
-+	} else {
-+		slic->ringing = false;
-+		slic->hook_streak = 0;
-+		ret = slic_set_state(slic, VP886_SS_IDLE, true);
-+	}
-+	mutex_unlock(&slic->lock);
++	struct an7581_slic *slic = slic_dbg;
++	int ret;
  
 -	if (slic)
 -		atomic_set(&slic->opened, 0);
 -	return 0;
++	if (!slic)
++		return -ENODEV;
++
++	mutex_lock(&slic->lock);
++	ret = slic_init(slic);
++	if (!ret) {
++		slic->hook_cb = le9641_hook_cb;
++		slic->hook_data = line;
++	}
++	mutex_unlock(&slic->lock);
++
 +	return ret;
++}
++
++static void le9641_exit(struct fxs_line *line)
++{
++	struct an7581_slic *slic = slic_dbg;
++
++	if (!slic)
++		return;
++
++	mutex_lock(&slic->lock);
++	if (slic->hook_data == line) {
++		slic->hook_cb = NULL;
++		slic->hook_data = NULL;
++	}
++	mutex_unlock(&slic->lock);
  }
-+EXPORT_SYMBOL_GPL(an7581_slic_fxs_set_ring);
  
 -static ssize_t slic_dev_read(struct file *file, char __user *ubuf,
 -			     size_t count, loff_t *ppos)
-+int an7581_slic_fxs_set_active(bool on)
++static int le9641_set_ring(struct fxs_line *line, bool on)
  {
 -	struct an7581_slic *slic = file->private_data;
 -	struct an7581_slic_event ev;
@@ -103,21 +134,29 @@
 -	if (file->f_flags & O_NONBLOCK) {
 -		if (!READ_ONCE(slic->hook_changed))
 -			return -EAGAIN;
--	} else {
++
++	mutex_lock(&slic->lock);
++	if (on) {
++		slic->ringing = true;
++		slic->ring_tick = 0;
++		slic->ring_on_ticks = RING_ON_MS / RING_TICK_MS;
++		slic->ring_period_ticks =
++			(RING_ON_MS + RING_OFF_MS) / RING_TICK_MS;
++		slic->hook_streak = 0;
++		ret = slic_set_state(slic, VP886_SS_BAL_RING, false);
+ 	} else {
 -		ret = wait_event_interruptible(slic->hook_wait,
 -					       READ_ONCE(slic->hook_changed));
 -		if (ret)
 -			return ret;
--	}
-+
- 	mutex_lock(&slic->lock);
++		slic->ringing = false;
++		slic->hook_streak = 0;
++		ret = slic_set_state(slic, VP886_SS_IDLE, true);
+ 	}
+-	mutex_lock(&slic->lock);
 -	ev.hook = slic->hook_offhook;
 -	ev.state = 0;
 -	slic->hook_changed = false;
-+	if (on)
-+		ret = slic_audio_on(slic);
-+	else
-+		ret = slic_set_state(slic, VP886_SS_IDLE, false);
  	mutex_unlock(&slic->lock);
 -	if (copy_to_user(ubuf, &ev, sizeof(ev)))
 -		return -EFAULT;
@@ -125,14 +164,14 @@
 +
 +	return ret;
  }
-+EXPORT_SYMBOL_GPL(an7581_slic_fxs_set_active);
  
 -static __poll_t slic_dev_poll(struct file *file, poll_table *wait)
-+int an7581_slic_fxs_get_hook(bool *offhook)
++static int le9641_set_active(struct fxs_line *line, bool on)
  {
 -	struct an7581_slic *slic = file->private_data;
 -	__poll_t mask = 0;
 +	struct an7581_slic *slic = slic_dbg;
++	int ret;
  
  	if (!slic)
 -		return EPOLLERR;
@@ -143,17 +182,18 @@
 +		return -ENODEV;
 +
 +	mutex_lock(&slic->lock);
-+	*offhook = slic->hook_offhook;
++	if (on)
++		ret = slic_audio_on(slic);
++	else
++		ret = slic_set_state(slic, VP886_SS_IDLE, false);
 +	mutex_unlock(&slic->lock);
 +
-+	return 0;
++	return ret;
  }
-+EXPORT_SYMBOL_GPL(an7581_slic_fxs_get_hook);
  
 -static long slic_dev_ioctl(struct file *file, unsigned int cmd,
 -			   unsigned long arg)
-+int an7581_slic_fxs_set_hook_cb(void (*cb)(void *data, bool offhook),
-+				void *data)
++static int le9641_get_hook(struct fxs_line *line, bool *offhook)
  {
 -	struct an7581_slic *slic = file->private_data;
 -	struct an7581_slic_status st;
@@ -224,11 +264,12 @@
 -		ret = -ENOTTY;
 -	}
 -	return ret;
--}
 +	mutex_lock(&slic->lock);
-+	slic->hook_cb = cb;
-+	slic->hook_data = data;
++	*offhook = slic->hook_offhook;
 +	mutex_unlock(&slic->lock);
++
++	return 0;
+ }
  
 -static const struct file_operations slic_dev_fops = {
 -	.owner = THIS_MODULE,
@@ -237,14 +278,24 @@
 -	.read = slic_dev_read,
 -	.poll = slic_dev_poll,
 -	.unlocked_ioctl = slic_dev_ioctl,
--};
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(an7581_slic_fxs_set_hook_cb);
++static const struct fxs_slic_ops le9641_ops = {
++	.caps		= FXS_CAP_RING | FXS_CAP_HOOK,
++	.init		= le9641_init,
++	.exit		= le9641_exit,
++	.set_ring	= le9641_set_ring,
++	.set_active	= le9641_set_active,
++	.get_hook	= le9641_get_hook,
++};
++
++static struct fxs_slic_driver le9641_driver = {
++	.name		= "le9641",
++	.owner		= THIS_MODULE,
++	.detect		= le9641_detect,
++	.ops		= &le9641_ops,
+ };
  
  static void slic_dump(struct an7581_slic *slic)
- {
-@@ -687,7 +627,6 @@
+@@ -687,7 +677,6 @@
  {
  	struct an7581_slic *slic;
  	u32 slots[2];
@@ -252,7 +303,7 @@
  
  	slic = devm_kzalloc(&pdev->dev, sizeof(*slic), GFP_KERNEL);
  	if (!slic)
-@@ -697,7 +636,6 @@
+@@ -697,7 +686,6 @@
  	mutex_init(&slic->lock);
  	init_waitqueue_head(&slic->hook_wait);
  	INIT_DELAYED_WORK(&slic->hook_work, slic_hook_work);
@@ -260,7 +311,7 @@
  	slic->zsi = an7581_zsi_get(&pdev->dev, "airoha,zsi");
  	if (!slic->zsi)
  		return -EPROBE_DEFER;
-@@ -714,18 +652,9 @@
+@@ -714,18 +702,9 @@
  	slic_dbg = slic;
  	proc_create(DRV_NAME, 0644, NULL, &slic_proc_ops);
  
@@ -280,7 +331,7 @@
  		 bus_slot);
  	return 0;
  }
-@@ -735,7 +664,6 @@
+@@ -735,7 +714,6 @@
  	struct an7581_slic *slic = platform_get_drvdata(pdev);
  
  	cancel_delayed_work_sync(&slic->hook_work);
@@ -288,3 +339,25 @@
  	remove_proc_entry(DRV_NAME, NULL);
  	slic_dbg = NULL;
  }
+@@ -781,11 +759,21 @@
+ 			platform_device_unregister(an7581_slic_fallback);
+ 		return ret;
+ 	}
++
++	ret = fxs_register_slic_driver(&le9641_driver);
++	if (ret) {
++		platform_driver_unregister(&an7581_slic_driver);
++		if (an7581_slic_fallback)
++			platform_device_unregister(an7581_slic_fallback);
++		return ret;
++	}
++
+ 	return 0;
+ }
+ 
+ static void __exit an7581_slic_exit(void)
+ {
++	fxs_unregister_slic_driver(&le9641_driver);
+ 	platform_driver_unregister(&an7581_slic_driver);
+ 	if (an7581_slic_fallback)
+ 		platform_device_unregister(an7581_slic_fallback);

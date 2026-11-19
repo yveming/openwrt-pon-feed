@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=fxs-core
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_LICENSE:=GPL-2.0-only
 PKG_MAINTAINER:=ming
 
@@ -21,7 +21,6 @@ PKG_VERSION:=
 define KernelPackage/fxs-core
   SUBMENU:=Voice over IP
   TITLE:=Generic FXS line core
-  DEPENDS:=@TARGET_airoha_an7581
   FILES:=$(PKG_BUILD_DIR)/fxs-core.ko
   AUTOLOAD:=
 endef
@@ -35,7 +34,7 @@ endef
 define KernelPackage/fxs-dummy
   SUBMENU:=Voice over IP
   TITLE:=FXS dummy line (testing)
-  DEPENDS:=@TARGET_airoha_an7581 +kmod-fxs-core
+  DEPENDS:=+kmod-fxs-core
   FILES:=$(PKG_BUILD_DIR)/fxs-dummy.ko
   AUTOLOAD:=$(call AutoLoad,50,fxs-dummy)
 endef

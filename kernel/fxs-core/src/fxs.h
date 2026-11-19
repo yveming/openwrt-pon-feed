@@ -7,6 +7,7 @@
 
 #ifdef __KERNEL__
 #include <linux/fs.h>
+#include <linux/list.h>
 #include <linux/poll.h>
 #endif
 
@@ -86,6 +87,7 @@ struct fxs_event {
 #define FXS_IOC_CLAIM		_IOW(FXS_IOC_MAGIC, 0x07, int)
 #define FXS_IOC_RELEASE		_IO(FXS_IOC_MAGIC, 0x08)
 #define FXS_IOC_GET_LINE_NAME	_IOR(FXS_IOC_MAGIC, 0x09, char[FXS_LINE_NAME_MAX])
+#define FXS_IOC_SET_ECHO_CANCEL	_IOW(FXS_IOC_MAGIC, 0x0a, int)
 
 #ifdef __KERNEL__
 
@@ -112,7 +114,29 @@ struct fxs_pcm_ops {
 			 const char __user *buf, size_t count, loff_t *ppos);
 	__poll_t (*poll)(struct fxs_line *line, struct file *file,
 			 poll_table *wait);
+	int (*set_echo_cancel)(struct fxs_line *line, bool on);
 };
+
+/*
+ * A SLIC backend registers a detector with the generic core.  The board
+ * provider probes every registered backend and binds the first one whose
+ * detect() accepts the hardware.  This keeps board files and init scripts
+ * from naming a specific SLIC part.
+ */
+struct fxs_slic_driver {
+	const char *name;
+	struct module *owner;
+	int (*detect)(void *ctx);
+	const struct fxs_slic_ops *ops;
+	void *priv;
+	struct list_head list;
+};
+
+int fxs_register_slic_driver(struct fxs_slic_driver *drv);
+void fxs_unregister_slic_driver(struct fxs_slic_driver *drv);
+const struct fxs_slic_ops *fxs_slic_probe(void *ctx, void **priv,
+					  struct module **owner,
+					  const char **name);
 
 struct fxs_line *fxs_register_line(struct device *dev, const char *name,
 				   struct module *owner,
