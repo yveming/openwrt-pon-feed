@@ -8,18 +8,18 @@ LUCI_TITLE:=LuCI VoIP / SIP configuration
 LUCI_DEPENDS:=+luci-base +asterisk +asterisk-chan-fxs \
 	+asterisk-pjsip +asterisk-res-pjproject +ip-full
 LUCI_PKGARCH:=all
-PKG_VERSION:=0.2.1
-PKG_RELEASE:=4
-PKG_PO_VERSION:=0.2.1
+PKG_VERSION:=0.2.2
+PKG_RELEASE:=1
+PKG_PO_VERSION:=0.2.2
 PKG_LICENSE:=Apache-2.0
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/yveming/airoha-voip.git
-PKG_SOURCE_VERSION:=24f96b68370cd13b2679e61cc859dc106854d601
-PKG_SOURCE_DATE:=2026-11-18
-PKG_SOURCE_SUBDIR:=airoha-voip-2026-11-18~24f96b6
-PKG_SOURCE:=airoha-voip-2026-11-18~24f96b6.tar.zst
-PKG_MIRROR_HASH:=88776a1756fd12a5e3d8a742862cc96521bc0e6580eb024275275c5f78e091f8
+PKG_SOURCE_VERSION:=e9735afb7bd3eb5d910ec177f77e2b285b9d67d9
+PKG_SOURCE_DATE:=2026-11-19
+PKG_SOURCE_SUBDIR:=airoha-voip-2026-11-19~e9735af
+PKG_SOURCE:=airoha-voip-2026-11-19~e9735af.tar.zst
+PKG_MIRROR_HASH:=056b7079d647af6d9928b2fad4596df938db2b0d339363d3654780f12d76aac7
 
 define Build/Prepare/luci-app-voip
 	$(STAGING_DIR_HOST)/bin/zstd -dc $(DL_DIR)/$(PKG_SOURCE) | \

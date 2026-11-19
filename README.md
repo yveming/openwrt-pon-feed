@@ -19,7 +19,7 @@ echo 'src-git pon_feed https://github.com/yveming/openwrt-pon-feed.git' >> feeds
 | 目录 | 包名 | 来源 | 说明 |
 | --- | --- | --- | --- |
 | `kernel/airoha-voice` | `kmod-airoha-en7581-pcm-spi`、`airoha-voice-ctl` | `Sirherobrine23/airoha_voip` + 本地补丁 | EN7581 语音（FXS/SLIC/PCM） |
-| `kernel/an7581-voice` | `kmod-an7581-zsi`、`kmod-an7581-pcm`、`kmod-an7581-slic-le9641`、`kmod-an7581-fxs` | `yveming/airoha-voip` | AN7581 PCM/ZSI + SLIC 后端 + FXS provider |
+| `kernel/an7581-voice` | `kmod-an7581-zsi`、`kmod-an7581-pcm`、`kmod-an7581-slic`、`kmod-an7581-fxs` | `yveming/airoha-voip` | AN7581 PCM/ZSI + SLIC 后端 + FXS provider |
 | `net/asterisk-chan-fxs` | `asterisk-chan-fxs` | 本地 | 通用 FXS Asterisk 通道（`/dev/fxsN`） |
 | `luci/luci-app-voip` | `luci-app-voip`、`luci-i18n-voip-zh-cn` | `yveming/airoha-voip` | VoIP 配置、`voip-apply`、`phone-led` |
 | `net/asterisk-chan-en75xx` | `asterisk-chan-en75xx` | `Sirherobrine23/airoha_voip` + 本地补丁 | Asterisk EN75xx 语音通道 |

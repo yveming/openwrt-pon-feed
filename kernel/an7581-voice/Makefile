@@ -1,21 +1,21 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
-# Thin package for the AN7581 PCM/ZSI/Le9641 source kept in yveming/airoha-voip.
+# AN7581 PCM/ZSI/SLIC/FXS source package.
 
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=an7581-voice
-PKG_RELEASE:=7
+PKG_RELEASE:=5
 PKG_LICENSE:=GPL-2.0-only
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/yveming/airoha-voip.git
-PKG_SOURCE_VERSION:=d2464d765523cc76939772bd99ee20e3e51bcb3a
-PKG_SOURCE_DATE:=2026-11-17
-PKG_SOURCE_SUBDIR:=airoha-voip-2026-11-17~d2464d7
-PKG_SOURCE:=airoha-voip-2026-11-17~d2464d7.tar.zst
-PKG_MIRROR_HASH:=330aa9636892355f121abee77451bfed7b9b6da6f94f2f5cb95fe0e716c51366
+PKG_SOURCE_VERSION:=e9735afb7bd3eb5d910ec177f77e2b285b9d67d9
+PKG_SOURCE_DATE:=2026-11-19
+PKG_SOURCE_SUBDIR:=airoha-voip-2026-11-19~e9735af
+PKG_SOURCE:=airoha-voip-2026-11-19~e9735af.tar.zst
+PKG_MIRROR_HASH:=056b7079d647af6d9928b2fad4596df938db2b0d339363d3654780f12d76aac7
 
 PKG_BUILD_DIR:=$(KERNEL_BUILD_DIR)/an7581-voice
 PKG_BUILD_PARALLEL:=1
@@ -24,60 +24,62 @@ include $(INCLUDE_DIR)/package.mk
 
 PKG_VERSION:=
 
-define KernelPackage/an7581-zsi
-  SUBMENU:=Voice over IP
-  TITLE:=Airoha AN7581 ZSI transport
-  DEPENDS:=@TARGET_airoha_an7581
-  FILES:=$(PKG_BUILD_DIR)/an7581-zsi.ko
-  AUTOLOAD:=
-endef
-
-define KernelPackage/an7581-zsi/description
- AN7581-only ZSI transport for the HG5582A Le9641.  Exposes
- /proc/an7581-zsi for controlled detection and register access.  The
- module also performs the PCM clock bring-up needed to clock ZSI control
- bytes.
-endef
-
 define KernelPackage/an7581-pcm
   SUBMENU:=Voice over IP
   TITLE:=Airoha AN7581 PCM engine
-  DEPENDS:=@TARGET_airoha_an7581 +kmod-an7581-zsi
+  DEPENDS:=@TARGET_airoha_an7581
   FILES:=$(PKG_BUILD_DIR)/an7581-pcm.ko
   AUTOLOAD:=
 endef
 
 define KernelPackage/an7581-pcm/description
- AN7581 PCM engine with OEM-derived 12-byte/15-descriptor rings, OSLEC
- line echo cancellation and a /proc/an7581-pcm diagnostic interface.
+ AN7581 PCM engine with the PCM clock/slot bring-up, OSLEC line echo
+ cancellation and a /proc/an7581-pcm diagnostic interface.
 endef
 
-define KernelPackage/an7581-slic-le9641
+define KernelPackage/an7581-zsi
   SUBMENU:=Voice over IP
-  TITLE:=Airoha AN7581 Le9641 SLIC
-  DEPENDS:=@TARGET_airoha_an7581 +kmod-fxs-core +kmod-an7581-zsi
-  FILES:=$(PKG_BUILD_DIR)/an7581-slic-le9641.ko
-  AUTOLOAD:=$(call AutoLoad,40,an7581-slic-le9641)
+  TITLE:=Airoha AN7581 ZSI transport
+  DEPENDS:=@TARGET_airoha_an7581 +kmod-an7581-pcm
+  FILES:=$(PKG_BUILD_DIR)/an7581-zsi.ko
+  AUTOLOAD:=
 endef
 
-define KernelPackage/an7581-slic-le9641/description
- Le9641 raw-MPI init, hook/ring control and linear audio path over the
- AN7581 ZSI transport.  Exposes /proc/an7581-slic for diagnostics.
+define KernelPackage/an7581-zsi/description
+ AN7581 ZSI transport for Zarlink SLICs.  The PCM clock/slot setup is owned
+ by kmod-an7581-pcm; this module only configures the ZSI wrapper and reset.
+endef
+
+define KernelPackage/an7581-slic
+  SUBMENU:=Voice over IP
+  TITLE:=Airoha AN7581 SLIC
+  DEPENDS:=@TARGET_airoha_an7581 +kmod-fxs-core +kmod-an7581-zsi
+  FILES:=$(PKG_BUILD_DIR)/an7581-slic.ko
+  AUTOLOAD:=
+endef
+
+define KernelPackage/an7581-slic/description
+ Single AN7581 SLIC module.  Zarlink Le9641 is supported; Le9642 and
+ PEF32001 backend entries are reserved.  Exposes /proc/an7581-slic.
 endef
 
 define KernelPackage/an7581-fxs
   SUBMENU:=Voice over IP
   TITLE:=AN7581 FXS line provider
-  DEPENDS:=@TARGET_airoha_an7581 +kmod-fxs-core +kmod-an7581-zsi \
-	+kmod-an7581-pcm
+  DEPENDS:=@TARGET_airoha_an7581 +kmod-fxs-core +kmod-an7581-pcm \
+	+kmod-an7581-slic
   FILES:=$(PKG_BUILD_DIR)/an7581-fxs.ko
-  AUTOLOAD:=$(call AutoLoad,50,an7581-fxs)
+  AUTOLOAD:=
 endef
 
 define KernelPackage/an7581-fxs/description
- Glue module that binds the AN7581 PCM engine to the generic fxs-core line
- abstraction.  The SLIC backend is selected at runtime from the registered
- detectors.  Creates /dev/fxs0 and /dev/fxs0-pcm.
+ Binds the AN7581 PCM engine and the selected SLIC backend to the generic
+ fxs-core line.  Creates /dev/fxs0 and /dev/fxs0-pcm.
+endef
+
+define KernelPackage/an7581-fxs/install
+	$(INSTALL_DIR) $(1)/etc/modules.d
+	echo an7581-fxs > $(1)/etc/modules.d/an7581-fxs
 endef
 
 define Build/Prepare
@@ -86,14 +88,16 @@ define Build/Prepare
 	$(STAGING_DIR_HOST)/bin/zstd -dc $(DL_DIR)/$(PKG_SOURCE) | \
 		$(TAR) -x -C $(PKG_BUILD_DIR) --strip-components=4 \
 			$(PKG_SOURCE_SUBDIR)/kernel/an7581-voice/src
-	$(Build/Patch)
 endef
 
 define Build/Compile
 	+$(KERNEL_MAKE) $(PKG_JOBS) M="$(PKG_BUILD_DIR)" modules
 endef
 
-$(eval $(call KernelPackage,an7581-zsi))
+PKG_RELEASE:=5
 $(eval $(call KernelPackage,an7581-pcm))
-$(eval $(call KernelPackage,an7581-slic-le9641))
+$(eval $(call KernelPackage,an7581-zsi))
+
+PKG_RELEASE:=1
+$(eval $(call KernelPackage,an7581-slic))
 $(eval $(call KernelPackage,an7581-fxs))
