@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=an7581-voice
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 PKG_LICENSE:=GPL-2.0-only
 
 PKG_SOURCE_PROTO:=git
@@ -66,6 +66,20 @@ define KernelPackage/an7581-slic-le9641/description
  AN7581 ZSI transport.  Exposes /proc/an7581-slic for diagnostics.
 endef
 
+define KernelPackage/fxs-an7581
+  SUBMENU:=Voice over IP
+  TITLE:=AN7581 Le9641 FXS line provider
+  DEPENDS:=@TARGET_airoha_an7581 +kmod-fxs-core +kmod-an7581-zsi \
+	+kmod-an7581-pcm +kmod-an7581-slic-le9641
+  FILES:=$(PKG_BUILD_DIR)/fxs-an7581.ko
+  AUTOLOAD:=
+endef
+
+define KernelPackage/fxs-an7581/description
+ Glue module that binds the AN7581 PCM engine and the Le9641 SLIC to the
+ generic fxs-core line abstraction.  Creates /dev/fxs0 and /dev/fxs0-pcm.
+endef
+
 define Build/Prepare
 	rm -rf $(PKG_BUILD_DIR)
 	mkdir -p $(PKG_BUILD_DIR)
@@ -82,3 +96,4 @@ endef
 $(eval $(call KernelPackage,an7581-zsi))
 $(eval $(call KernelPackage,an7581-pcm))
 $(eval $(call KernelPackage,an7581-slic-le9641))
+$(eval $(call KernelPackage,fxs-an7581))
