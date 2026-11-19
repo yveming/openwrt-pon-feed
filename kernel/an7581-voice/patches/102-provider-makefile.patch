@@ -5,5 +5,5 @@
  obj-m += an7581-slic-le9641.o
  an7581-slic-le9641-objs := an7581_slic_le9641.o
 +
-+obj-m += fxs-an7581.o
-+fxs-an7581-objs := fxs_an7581.o
++obj-m += an7581-fxs.o
++an7581-fxs-objs := an7581_fxs.o

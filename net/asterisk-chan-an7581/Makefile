@@ -6,7 +6,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=asterisk-chan-an7581
-PKG_RELEASE:=13
+PKG_RELEASE:=14
 PKG_LICENSE:=GPL-2.0
 
 PKG_SOURCE_PROTO:=git
@@ -27,7 +27,7 @@ define Package/asterisk-chan-an7581
   SUBMENU:=Telephony
   SECTION:=net
   CATEGORY:=Network
-  DEPENDS:=+asterisk +kmod-fxs-core +kmod-fxs-an7581 +kmod-an7581-zsi +kmod-an7581-pcm +kmod-an7581-slic-le9641
+  DEPENDS:=+asterisk +kmod-fxs-core +kmod-an7581-fxs +kmod-an7581-zsi +kmod-an7581-pcm +kmod-an7581-slic-le9641
   TITLE:=AN7581 Le9641 FXS channel driver
 endef
 

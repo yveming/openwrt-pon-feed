@@ -12,7 +12,7 @@
  		i=$((i + 1))
  	done
  
-+	modprobe fxs-an7581 2>/dev/null
++	modprobe an7581-fxs 2>/dev/null
 +	i=0
 +	while [ $i -lt 10 ] && [ ! -e /dev/fxs0 ]; do
 +		sleep 1

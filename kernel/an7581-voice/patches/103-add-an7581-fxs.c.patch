@@ -1,5 +1,5 @@
 --- /dev/null
-+++ b/fxs_an7581.c
++++ b/an7581_fxs.c
 @@ -0,0 +1,143 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
@@ -121,7 +121,7 @@
 +
 +static struct fxs_line *an7581_line;
 +
-+static int __init fxs_an7581_init(void)
++static int __init an7581_fxs_init(void)
 +{
 +	an7581_line = fxs_register_line(NULL, "line1", THIS_MODULE,
 +					&an7581_slic_ops, NULL,
@@ -132,14 +132,14 @@
 +	return 0;
 +}
 +
-+static void __exit fxs_an7581_exit(void)
++static void __exit an7581_fxs_exit(void)
 +{
 +	fxs_unregister_line(an7581_line);
 +	an7581_line = NULL;
 +}
 +
-+module_init(fxs_an7581_init);
-+module_exit(fxs_an7581_exit);
++module_init(an7581_fxs_init);
++module_exit(an7581_fxs_exit);
 +
 +MODULE_INFO(author, "ming");
 +MODULE_INFO(description, "AN7581 Le9641 FXS line provider");
