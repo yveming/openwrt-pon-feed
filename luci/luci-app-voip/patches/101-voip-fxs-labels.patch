@@ -1,0 +1,27 @@
+--- a/htdocs/luci-static/resources/view/voip/status.js
++++ b/htdocs/luci-static/resources/view/voip/status.js
+@@ -205,7 +205,7 @@
+ 			sipRows.push(row(_('Note'), note));
+ 
+ 		var fxsRows = [
+-			row(_('FXS device'), d.fxs_device || '/dev/an7581-slic'),
++			row(_('FXS device'), d.fxs_device || '/dev/fxs0'),
+ 			row(_('PCM channel'), d.pcm_channel || 'PCM0 (channel 0, slot 4)'),
+ 			row(_('Terminal ID'), d.terminal_id || 'AN7581/line1'),
+ 			row(_('Hook'), hookName(d.fxs_hook)),
+--- a/root/usr/share/voip/voip.default
++++ b/root/usr/share/voip/voip.default
+@@ -1,4 +1,4 @@
+-# Single FXS port: /dev/an7581-slic on PCM channel 0, slot 4.
++# Single FXS port: /dev/fxs0 on PCM channel 0, slot 4.
+ # The AN7581 driver opens the PCM/SLIC devices directly; no line-card or
+ # port selection is exposed in the UI.
+ 
+--- a/root/etc/config/voip
++++ b/root/etc/config/voip
+@@ -1,4 +1,4 @@
+-# Single FXS port: /dev/an7581-slic on PCM channel 0, slot 4.
++# Single FXS port: /dev/fxs0 on PCM channel 0, slot 4.
+ # The AN7581 driver opens the PCM/SLIC devices directly; no line-card or
+ # port selection is exposed in the UI.
+ 
